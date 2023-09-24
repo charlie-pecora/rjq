@@ -57,9 +57,34 @@ impl GetArrayElements {
     }
 }
 
+
+struct ListKeys {
+}
+
+impl ListKeys {
+    fn apply(&self, input: Value) -> Vec<Value> {
+        match input {
+            Value::Object(v) => {
+                v.keys()
+                    .map(|x| match serde_json::to_value(x) {
+                        Ok(result) => result,
+                        Err(_) => Value::Null,
+                    }
+                         ).collect()
+                
+            },
+            _ => {
+                eprintln!("error, not an object");
+                Vec::new()
+            }
+        }
+    }
+}
+
 enum Command {
     GetArrayElements(GetArrayElements),
     GetKey(GetKey),
+    ListKeys(ListKeys),
 }
 
 impl Command {
@@ -67,6 +92,7 @@ impl Command {
         match &self {
             Command::GetArrayElements(getter) => getter.apply(input),
             Command::GetKey(getter) => getter.apply(input),
+            Command::ListKeys(getter) => getter.apply(input),
         }
     }
 }
@@ -81,7 +107,9 @@ pub fn query_json(data: Value, query: &str) -> Vec<Value> {
 
     for _command in PATTERN.find_iter(&query) {
         let command = _command.as_str();
-        if command.starts_with("[") && command.ends_with("]") {
+        if command == "listkeys" {
+            getters.push(Command::ListKeys(ListKeys{}))
+        } else if command.starts_with("[") && command.ends_with("]") {
             getters.push(Command::GetArrayElements(GetArrayElements {
                 indices: command[1..(command.len() - 1)].to_string(),
             }));
@@ -143,5 +171,11 @@ mod tests {
         let command = GetArrayElements { indices };
         let result = command.apply(input);
         assert_eq!(result, expected.to_vec());
+    }
+
+    #[test]
+    fn test_query_keys() {
+        let result = query_json(json!({"a": 1, "c": 3}), "listkeys");
+        assert_eq!(result, vec!["a", "c"]);
     }
 }

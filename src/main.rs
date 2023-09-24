@@ -3,7 +3,7 @@ use std::io::{self, BufRead, Write};
 
 use clap::Parser;
 
-use rj::query_json;
+use rjq::query_json;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
